@@ -1,5 +1,5 @@
-Version 1.0.0 (November 2021)
-This version depends on Shiftkick (v1.0.0), which depends on Sidekick (v1.11.1 - https://www.racedepartment.com/downloads/sidekick.11007/)
+Version 1.1.0 (December 2021)
+This version depends on Shiftkick (v1.1.0), which depends on Sidekick (v1.11.1 - https://www.racedepartment.com/downloads/sidekick.11007/)
 
 Installation:
 - Go to Shiftkick directory which should be located under your Steam/SteamLibrary folder,

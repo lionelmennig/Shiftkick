@@ -25,6 +25,10 @@ class ConfigManager:
         except:
             self.ledHeight = 20
         try:
+            self.blinkingSpeed = config.getint('LogicalShiftlight', 'blinking_speed')
+        except:
+            self.blinkingSpeed = 10
+        try:
             self.schemeYellow = config['LogicalShiftlight']['scheme_yellow']
         except:
             self.schemeYellow = 'Explosion'
@@ -32,14 +36,6 @@ class ConfigManager:
             self.schemeRed = config['LogicalShiftlight']['scheme_red']
         except:
             self.schemeRed = 'Implosion'
-        try:
-            self.schemeOptimal = config['LogicalShiftlight']['scheme_optimal']
-        except:
-            self.schemeOptimal = 'Default'
-        try:
-            self.schemeOptimalLate = config['LogicalShiftlight']['scheme_optimal_late']
-        except:
-            self.schemeOptimalLate = 'DefaultBlinking'
         try:
             self.imageYellow = config['LogicalShiftlight']['image_yellow']
         except:
@@ -56,3 +52,11 @@ class ConfigManager:
             self.imagePlaceholder = config['LogicalShiftlight']['image_placeholder']
         except:
             self.imagePlaceholder = 'default_placeholder'
+        try:
+            self.yellowBlinkingPerc = config.getint('LogicalShiftlight', 'yellow_value_to_start_blinking')
+        except:
+            self.yellowBlinkingPerc = 100
+        try:
+            self.redBlinkingPerc = config.getint('LogicalShiftlight', 'red_value_to_start_blinking')
+        except:
+            self.redBlinkingPerc = 60

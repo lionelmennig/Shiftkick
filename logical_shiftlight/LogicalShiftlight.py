@@ -1,8 +1,8 @@
 ################################################
 # LogicalShiftlight by Lionel Mennig (leeyo)
 # 
-# Version: 1.0.0
-# Based of Shiftkick 1.0.0
+# Version: 1.1.0
+# Based of Shiftkick 1.1.0
 #
 # None of the code below is to be redistributed
 # or reused without the permission of the
@@ -17,6 +17,8 @@ from extensions.Shiftkick.logical_shiftlight.lib.Extinguisher import Extinguishe
 class LogicalShiftlight:
     
     lastState = ShifterState.OFF
+    blinkerIsOn = True
+    blinkerHeartbeat = 0
     
     def __init__(self, ac, pluginDir):
         # Load config and parameters
@@ -26,6 +28,9 @@ class LogicalShiftlight:
         ledsSpacing = configManager.ledsSpacing
         ledWidth = configManager.ledWidth
         ledHeight = configManager.ledHeight
+        self.blinkingSpeed = configManager.blinkingSpeed
+        yellowValueToStartBlinking = configManager.yellowBlinkingPerc
+        redValueToStartBlinking = configManager.redBlinkingPerc
         
         # Load images
         yellowImage = pluginDir + "/images/" + configManager.imageYellow + ".png"
@@ -57,57 +62,52 @@ class LogicalShiftlight:
             leds.append(led)
         
         # Get the schemes and initialize them
-        try:
-            optimalModule = __import__('extensions.Shiftkick.logical_shiftlight.schemes.' + configManager.schemeOptimal, fromlist=[configManager.schemeOptimal])
-            self.optimalScheme = optimalModule.Scheme()
-        except:
-            optimalModule = __import__('extensions.Shiftkick.logical_shiftlight.lib.BaseScheme', fromlist=['BaseScheme'])
-            self.optimalScheme = optimalModule.BaseScheme()
-        self.optimalScheme.initialize(ac, leds, optimalImage, placeholder)
+        optimalModule = __import__('extensions.Shiftkick.logical_shiftlight.lib.BaseOptimalScheme', fromlist=['BaseOptimalScheme'])
+        self.optimalScheme = optimalModule.BaseOptimalScheme(ac, leds, optimalImage)
+        
+        optimalLateModule = __import__('extensions.Shiftkick.logical_shiftlight.schemes.AlwaysBlinking', fromlist=['AlwaysBlinking'])
+        self.optimalLateScheme = optimalLateModule.AlwaysBlinking(ac, leds, optimalImage, placeholder)
         
         try:
-            optimalLateModule = __import__('extensions.Shiftkick.logical_shiftlight.schemes.' + configManager.schemeOptimalLate, fromlist=[configManager.schemeOptimalLate])
-            self.optimalLateScheme = optimalLateModule.Scheme()
-        except:
-            optimalLateModule = __import__('extensions.Shiftkick.logical_shiftlight.lib.BaseScheme', fromlist=['BaseScheme'])
-            self.optimalLateScheme = optimalLateModule.BaseScheme()
-        self.optimalLateScheme.initialize(ac, leds, optimalImage, placeholder)
-
-        try:
             yellowModule = __import__('extensions.Shiftkick.logical_shiftlight.schemes.' + configManager.schemeYellow, fromlist=[configManager.schemeYellow])
-            self.yellowScheme = yellowModule.Scheme()
+            self.yellowScheme = yellowModule.Scheme(ac, leds, yellowImage, placeholder, yellowValueToStartBlinking)
         except:
             yellowModule = __import__('extensions.Shiftkick.logical_shiftlight.lib.BaseScheme', fromlist=['BaseScheme'])
-            self.yellowScheme = yellowModule.BaseScheme()
-        self.yellowScheme.initialize(ac, leds, yellowImage, placeholder)
-
+            self.yellowScheme = yellowModule.BaseScheme(ac, leds, yellowImage, placeholder, yellowValueToStartBlinking)
+        
         try:
             redModule = __import__('extensions.Shiftkick.logical_shiftlight.schemes.' + configManager.schemeRed, fromlist=[configManager.schemeRed])
-            self.redScheme = redModule.Scheme()
+            self.redScheme = redModule.Scheme(ac, leds, redImage, placeholder, redValueToStartBlinking)
         except:
             redModule = __import__('extensions.Shiftkick.logical_shiftlight.lib.BaseScheme', fromlist=['BaseScheme'])
-            self.redScheme = redModule.BaseScheme()
-        self.redScheme.initialize(ac, leds, redImage, placeholder)
+            self.redScheme = redModule.BaseScheme(ac, leds, redImage, placeholder, redValueToStartBlinking)
         
         # Instanciate an extinguisher (so 'self' doesn't need to retain 'ac', 'leds' and 'placeholder')
         self.extinguisher = Extinguisher(ac, leds, placeholder)
     
+    def __heartbeat(self):
+        self.blinkerHeartbeat += 1
+        if (self.blinkerHeartbeat >= self.blinkingSpeed):
+            self.blinkerIsOn = not self.blinkerIsOn
+            self.blinkerHeartbeat = 0
+            
+    
     def update(self, yellowFloatValue = 0, redFloatValue = 0, optimalShiftlightState = OptimalShiftlightState.OFF):
+        self.__heartbeat()
         if (optimalShiftlightState == OptimalShiftlightState.OPTIMAL):
             if (self.lastState is not ShifterState.OPTIMAL):
                 self.optimalScheme.applyScheme()
                 self.lastState = ShifterState.OPTIMAL
         elif (optimalShiftlightState == OptimalShiftlightState.OPTIMAL_LATE):
-            if (self.lastState is not ShifterState.OPTIMAL_LATE):
-                self.optimalLateScheme.applyScheme()
-                self.lastState = ShifterState.OPTIMAL_LATE
+            self.optimalLateScheme.applyScheme(self.blinkerIsOn)
+            self.lastState = ShifterState.OPTIMAL_LATE
         elif (redFloatValue > 0):
-            if (self.lastState is not ShifterState.RED or self.redScheme.shouldAlwaysRefresh()):
-                self.redScheme.applyScheme(redFloatValue)
+            if (self.lastState is not ShifterState.RED or self.redScheme.shouldAlwaysRefresh):
+                self.redScheme.applyScheme(redFloatValue, self.blinkerIsOn)
                 self.lastState = ShifterState.RED
         elif (yellowFloatValue > 0):
-            if (self.lastState is not ShifterState.YELLOW or self.yellowScheme.shouldAlwaysRefresh()):
-                self.yellowScheme.applyScheme(yellowFloatValue)
+            if (self.lastState is not ShifterState.YELLOW or self.yellowScheme.shouldAlwaysRefresh):
+                self.yellowScheme.applyScheme(yellowFloatValue, self.blinkerIsOn)
                 self.lastState = ShifterState.YELLOW
         else:
             if (self.lastState is not ShifterState.OFF):
